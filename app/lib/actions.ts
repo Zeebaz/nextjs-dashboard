@@ -1,5 +1,7 @@
 'use server';
+import { signIn } from '@/auth';
 import { sql } from '@vercel/postgres';
+import { AuthError } from 'next-auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -39,7 +41,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
   };
 
   // const { amount, customerId, status } = CreateInvoice.parse(rawFormData);
-  const validatedFields = CreateInvoice.safeParse(rawFormData);  
+  const validatedFields = CreateInvoice.safeParse(rawFormData);
 
   if (!validatedFields.success) {
     return {
@@ -108,7 +110,7 @@ export async function updateInvoice(
 }
 
 export async function deleteInvoice(id: string) {
-  throw new Error('Failed to Delete Invoice');
+  // throw new Error('Failed to Delete Invoice');
 
   try {
     await sql`DELETE FROM invoices WHERE id = ${id}`;
@@ -120,5 +122,25 @@ export async function deleteInvoice(id: string) {
     return {
       mesage: 'Database Error: Failed to Delete Invoice.',
     };
+  }
+}
+
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid email or password.';
+
+        default:
+          return 'Something went wrong. Please try again.';
+      }
+    }
+    throw error;
   }
 }
